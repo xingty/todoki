@@ -24,7 +24,7 @@ import {
   XCircle,
   Wrench,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface EventTimelineProps {
   /** Event kind patterns to subscribe (e.g., ["task.*", "agent.*"]) */
@@ -560,6 +560,23 @@ export function EventTimeline({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+
+  // Track previous target to detect changes
+  const prevTargetRef = useRef<{ taskId?: string; agentId?: string }>({});
+
+  // Reset history state when target changes
+  useEffect(() => {
+    const prev = prevTargetRef.current;
+    const targetChanged = prev.taskId !== taskId || prev.agentId !== agentId;
+
+    if (targetChanged && (prev.taskId !== undefined || prev.agentId !== undefined)) {
+      setHistoricalEvents([]);
+      setHasLoadedHistory(false);
+      setHistoryError(null);
+    }
+
+    prevTargetRef.current = { taskId, agentId };
+  }, [taskId, agentId]);
 
   // Load historical events on mount
   useEffect(() => {

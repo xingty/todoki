@@ -103,6 +103,9 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
+  // Track previous subscription target to detect changes
+  const prevTargetRef = useRef<{ taskId?: string; agentId?: string }>({});
+
   // Stabilize kinds array reference by serializing to string
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const kindsKey = useMemo(() => kinds?.join(',') || '', [JSON.stringify(kinds)]);
@@ -261,6 +264,21 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
   const clearEvents = useCallback(() => {
     setEvents([]);
   }, []);
+
+  // Clear events when subscription target (taskId/agentId) changes
+  useEffect(() => {
+    const prev = prevTargetRef.current;
+    const targetChanged =
+      prev.taskId !== taskId || prev.agentId !== agentId;
+
+    if (targetChanged && (prev.taskId !== undefined || prev.agentId !== undefined)) {
+      // Target changed (not initial mount), clear events
+      console.log('[EventStream] Subscription target changed, clearing events');
+      setEvents([]);
+    }
+
+    prevTargetRef.current = { taskId, agentId };
+  }, [taskId, agentId]);
 
   // Connect on mount, disconnect when disabled
   useEffect(() => {

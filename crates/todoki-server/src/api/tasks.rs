@@ -369,8 +369,8 @@ pub async fn execute_task(
     let create_agent = CreateAgent::new(
         agent_name,
         workdir.clone(),
-        "claude-code-acp".to_string(),
-        vec!["--dangerously-skip-permissions".to_string()],
+        relay_info.command.clone(),
+        relay_info.command_args.clone(),
         ExecutionMode::Remote,
         agent_role,
         project.id,

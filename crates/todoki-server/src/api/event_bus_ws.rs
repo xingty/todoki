@@ -449,6 +449,15 @@ async fn handle_relay_event(
             let name = data.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
             let role_str = data.get("role").and_then(|v| v.as_str()).unwrap_or("general");
             let role = ProtocolAgentRole::from_str(role_str);
+            let command = data
+                .get("command")
+                .and_then(|v| v.as_str())
+                .unwrap_or("claude-code-acp")
+                .to_string();
+            let command_args: Vec<String> = data
+                .get("command_args")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_else(|| vec!["--dangerously-skip-permissions".to_string()]);
             let safe_paths: Vec<String> = data.get("safe_paths")
                 .and_then(|v| serde_json::from_value(v.clone()).ok())
                 .unwrap_or_default();
@@ -464,6 +473,8 @@ async fn handle_relay_event(
                 relay_id.to_string(),
                 name.clone(),
                 role,
+                command,
+                command_args,
                 safe_paths,
                 labels,
                 projects,

@@ -32,6 +32,14 @@ pub struct Args {
     #[arg(short, long, env = "TODOKI_RELAY_ROLE", default_value = "general", value_parser = parse_relay_role)]
     pub role: AgentRole,
 
+    /// Default command to spawn for new sessions (ACP-compatible process)
+    #[arg(long, env = "TODOKI_RELAY_COMMAND")]
+    pub command: Option<String>,
+
+    /// Default command arguments to spawn for new sessions (comma-separated)
+    #[arg(long, env = "TODOKI_RELAY_COMMAND_ARGS", value_delimiter = ',')]
+    pub command_args: Vec<String>,
+
     /// Allowed working directories (comma-separated)
     #[arg(short, long, env = "TODOKI_SAFE_PATHS", value_delimiter = ',')]
     pub safe_paths: Vec<String>,
@@ -92,6 +100,9 @@ pub struct RelaySettings {
     pub name: Option<String>,
     #[serde(default)]
     pub role: AgentRole,
+    pub command: Option<String>,
+    #[serde(default)]
+    pub command_args: Vec<String>,
     #[serde(default)]
     pub safe_paths: Vec<String>,
     #[serde(default)]
@@ -109,6 +120,8 @@ pub struct RelayConfig {
     pub token: String,
     pub name: Option<String>,
     pub role: AgentRole,
+    pub command: String,
+    pub command_args: Vec<String>,
     pub safe_paths: Vec<String>,
     pub labels: HashMap<String, String>,
     pub projects: Vec<Uuid>,
@@ -143,6 +156,21 @@ impl RelayConfig {
             file_config.relay.role
         } else {
             AgentRole::General
+        };
+
+        // Default command: CLI/env takes precedence; otherwise file; otherwise hard default.
+        let command = args
+            .command
+            .or(file_config.relay.command)
+            .unwrap_or_else(|| "claude-code-acp".to_string());
+
+        // Default args: CLI/env takes precedence when non-empty; otherwise file; otherwise hard default.
+        let command_args = if !args.command_args.is_empty() {
+            args.command_args
+        } else if !file_config.relay.command_args.is_empty() {
+            file_config.relay.command_args
+        } else {
+            vec!["--dangerously-skip-permissions".to_string()]
         };
 
         // For vec fields, use CLI if non-empty, otherwise file
@@ -186,6 +214,8 @@ impl RelayConfig {
             token: args.token,
             name,
             role,
+            command,
+            command_args,
             safe_paths,
             labels,
             projects,
@@ -220,6 +250,16 @@ impl RelayConfig {
     /// Get relay role
     pub fn role(&self) -> AgentRole {
         self.role
+    }
+
+    /// Get default command to spawn
+    pub fn command(&self) -> &str {
+        &self.command
+    }
+
+    /// Get default command args to spawn
+    pub fn command_args(&self) -> &[String] {
+        &self.command_args
     }
 
     /// Get project IDs this relay is bound to (empty = accept all)

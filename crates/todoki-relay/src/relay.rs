@@ -199,6 +199,8 @@ impl Relay {
             "relay_id": self.relay_id,
             "name": self.config.relay_name(),
             "role": self.config.role().as_str(),
+            "command": self.config.command(),
+            "command_args": self.config.command_args(),
             "safe_paths": self.config.safe_paths(),
             "labels": self.config.labels(),
             "projects": self.config.projects(),

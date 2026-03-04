@@ -23,6 +23,8 @@ pub struct RelayInfo {
     pub relay_id: String,
     pub name: String,
     pub role: String,
+    pub command: String,
+    pub command_args: Vec<String>,
     pub safe_paths: Vec<String>,
     pub labels: HashMap<String, String>,
     pub projects: Vec<Uuid>,

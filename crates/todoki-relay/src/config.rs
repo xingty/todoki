@@ -158,19 +158,22 @@ impl RelayConfig {
             AgentRole::General
         };
 
-        // Default command: CLI/env takes precedence; otherwise file; otherwise hard default.
-        let command = args
-            .command
-            .or(file_config.relay.command)
-            .unwrap_or_else(|| "claude-code-acp".to_string());
-
-        // Default args: CLI/env takes precedence when non-empty; otherwise file; otherwise hard default.
-        let command_args = if !args.command_args.is_empty() {
-            args.command_args
-        } else if !file_config.relay.command_args.is_empty() {
-            file_config.relay.command_args
+        // Default command/args: if command is missing/empty, use the built-in defaults.
+        // Otherwise, respect command/args from CLI/env or file as-is.
+        let command_raw = args.command.or(file_config.relay.command).unwrap_or_default();
+        let (command, command_args) = if command_raw.trim().is_empty() {
+            (
+                "claude-code-acp".to_string(),
+                vec!["--dangerously-skip-permissions".to_string()],
+            )
         } else {
-            vec!["--dangerously-skip-permissions".to_string()]
+            let cmd_args = if !args.command_args.is_empty() {
+                args.command_args
+            } else {
+                file_config.relay.command_args
+            };
+
+            (command_raw.trim().to_string(), cmd_args)
         };
 
         // For vec fields, use CLI if non-empty, otherwise file

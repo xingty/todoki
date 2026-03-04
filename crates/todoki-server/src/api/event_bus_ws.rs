@@ -449,15 +449,49 @@ async fn handle_relay_event(
             let name = data.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
             let role_str = data.get("role").and_then(|v| v.as_str()).unwrap_or("general");
             let role = ProtocolAgentRole::from_str(role_str);
-            let command = data
+            let command = match data
                 .get("command")
                 .and_then(|v| v.as_str())
-                .unwrap_or("claude-code-acp")
-                .to_string();
-            let command_args: Vec<String> = data
-                .get("command_args")
-                .and_then(|v| serde_json::from_value(v.clone()).ok())
-                .unwrap_or_else(|| vec!["--dangerously-skip-permissions".to_string()]);
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+            {
+                Some(s) => s.to_string(),
+                None => {
+                    let registered_msg = WsMessage::Error {
+                        message: "relay.up missing or invalid command".to_string(),
+                    };
+                    if let Ok(json) = serde_json::to_string(&registered_msg) {
+                        let _ = tx.send(Message::Text(json)).await;
+                    }
+                    return Ok(());
+                }
+            };
+
+            let command_args_value = match data.get("command_args") {
+                Some(v) => v,
+                None => {
+                    let registered_msg = WsMessage::Error {
+                        message: "relay.up missing command_args".to_string(),
+                    };
+                    if let Ok(json) = serde_json::to_string(&registered_msg) {
+                        let _ = tx.send(Message::Text(json)).await;
+                    }
+                    return Ok(());
+                }
+            };
+
+            let command_args: Vec<String> = match serde_json::from_value(command_args_value.clone()) {
+                Ok(v) => v,
+                Err(e) => {
+                    let registered_msg = WsMessage::Error {
+                        message: format!("relay.up invalid command_args: {e}"),
+                    };
+                    if let Ok(json) = serde_json::to_string(&registered_msg) {
+                        let _ = tx.send(Message::Text(json)).await;
+                    }
+                    return Ok(());
+                }
+            };
             let safe_paths: Vec<String> = data.get("safe_paths")
                 .and_then(|v| serde_json::from_value(v.clone()).ok())
                 .unwrap_or_default();
